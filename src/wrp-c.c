@@ -267,14 +267,21 @@ void wrp_free_struct( wrp_msg_t *msg )
             }
             break;
         case WRP_MSG_TYPE__EVENT:
+	WRP_INFO("B4 source free\n");
             free( msg->u.event.source );
+	WRP_INFO("B4 dest free\n");
             free( msg->u.event.dest );
+	WRP_INFO("B4 payload free\n");
             free( msg->u.event.payload );
+	WRP_INFO("B4 transaction_uuid free\n");
 	    free( msg->u.event.transaction_uuid );
+	WRP_INFO("B4 content_type free\n");
             if(NULL != msg->u.event.content_type)
             {
+		WRP_INFO("Inside Content_type free\n");
                 free(msg->u.event.content_type);
             }
+	WRP_INFO("B4 headers if free\n");
             if( NULL != msg->u.event.headers ) {
                 size_t cnt;
 
@@ -284,6 +291,7 @@ void wrp_free_struct( wrp_msg_t *msg )
 
                 free( msg->u.event.headers );
             }
+	WRP_INFO("B4 metadata if free\n");
             if( NULL != msg->u.event.metadata ) {
                 size_t n = 0;
 
@@ -296,6 +304,7 @@ void wrp_free_struct( wrp_msg_t *msg )
                 free( msg->u.event.metadata->data_items );
                 free( msg->u.event.metadata );
             }
+	WRP_INFO("B4 partner_ids if free\n");
             if( NULL != msg->u.event.partner_ids ) {
                 size_t i;
 
@@ -305,6 +314,7 @@ void wrp_free_struct( wrp_msg_t *msg )
 
                 free( msg->u.event.partner_ids );
             }
+	WRP_INFO("B4 break\n");
             break;
         case WRP_MSG_TYPE__SVC_REGISTRATION:
             WRP_DEBUG("Free for REGISTRATION \n" );
@@ -387,8 +397,9 @@ void wrp_free_struct( wrp_msg_t *msg )
                     msg->msg_type );
             break;
     }
-
+WRP_INFO("B4 msg free\n");
     free( msg );
+WRP_INFO("After msg free\n");
 }
 
 /* See wrp-c.h for details. */
@@ -586,6 +597,7 @@ static ssize_t __wrp_struct_to_bytes( const wrp_msg_t *msg, char **bytes )
 		        rv = __wrp_pack_structure( encode, bytes );
 		        break;
 		    case WRP_MSG_TYPE__EVENT:
+			WRP_INFO("Inside Event\n");
 		        encode->source = event->source;
 		        encode->dest = event->dest;
 		        encode->content_type = event->content_type;
@@ -597,17 +609,21 @@ static ssize_t __wrp_struct_to_bytes( const wrp_msg_t *msg, char **bytes )
 		        encode->metadata = event->metadata;
 		        encode->partner_ids = event->partner_ids;
 			if( event->qos ) {
+				WRP_INFO("Inside qos\n");
 				encode->qos = event->qos;
 			}	
 			if( event->transaction_uuid ) {
+				WRP_INFO("Inside transid\n");
 				encode->transaction_uuid = event->transaction_uuid;
 			}
 			else
 			{
+				WRP_INFO("Trans id is NULL\n");
 				encode->transaction_uuid = NULL;
 			}	
 			encode->msgType = msg->msg_type;
 		        rv = __wrp_pack_structure( encode, bytes );
+			WRP_INFO("before break in event type\n");
 		        break;
 		    case WRP_MSG_TYPE__SVC_REGISTRATION:
 		        encode->msgType = msg->msg_type;
@@ -1116,16 +1132,18 @@ static ssize_t __wrp_pack_structure( struct req_res_t *encodeReq , char **data )
     int wrp_map_size = WRP_MAP_SIZE;
     struct req_res_t *encodeReqtmp =  encodeReq;
     /***   Start of Msgpack Encoding  ***/
-    WRP_DEBUG("***   Start of Msgpack Encoding  ***\n" );
+    WRP_INFO("***   Start of Msgpack Encoding  ***\n" );
     msgpack_sbuffer_init( &sbuf );
     msgpack_packer_init( &pk, &sbuf, msgpack_sbuffer_write );
 
     // Change wrp_map_size value depending on if optional fields spans and headers,metadata,content_type,accept crud payload are present
     if( encodeReqtmp->transaction_uuid != NULL) {
+	WRP_INFO("Inside pack trans_id\n");
         wrp_map_size++;
     }
 
     if( encodeReqtmp->qos ) {
+	WRP_INFO("Inside pack qos\n");
 	    wrp_map_size++;
     }	    
     
@@ -1192,16 +1210,23 @@ static ssize_t __wrp_pack_structure( struct req_res_t *encodeReq , char **data )
             //Pack msgType,source,dest,headers,metadata,partner_ids
             mapCommonString( &pk, encodeReqtmp );
 	    if( encodeReqtmp->qos ) {
+		WRP_INFO("Before pack qos\n");
 	    	__msgpack_pack_string( &pk, WRP_QOS.name, WRP_QOS.length );
 	    	msgpack_pack_int( &pk, encodeReqtmp->qos );  
+		WRP_INFO("After pack qos\n");
 	    }
+		WRP_INFO("Before pack trans\n");
 	    if( encodeReqtmp->transaction_uuid != NULL) {
+		WRP_INFO("Inside trans packing\n");
+		WRP_INFO("encodeReqtmp->transaction_uuid is %s\n", encodeReqtmp->transaction_uuid);
 	    	__msgpack_pack_string_nvp( &pk, &WRP_TRANS_ID, encodeReqtmp->transaction_uuid );
 	    }
+		WRP_INFO("After pack trans\n");
             __msgpack_pack_string_nvp( &pk, &WRP_CONTENT_TYPE, encodeReqtmp->content_type );
             __msgpack_pack_string( &pk, WRP_PAYLOAD.name, WRP_PAYLOAD.length );
             msgpack_pack_bin( &pk, encodeReqtmp->payload_size );
             msgpack_pack_bin_body( &pk, encodeReqtmp->payload, encodeReqtmp->payload_size );
+		WRP_INFO("B4 break in packing\n");
             break;
         case WRP_MSG_TYPE__SVC_REGISTRATION:
             wrp_map_size = 3;//Hardcoded.Pack service name and url only
